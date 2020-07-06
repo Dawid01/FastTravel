@@ -2,5 +2,6 @@
 <resources>
 
     <string name="map_key" translatable="false">AIzaSyC6jG81RzaGxyv1BNSwTvrqYOUyg_m5p8A</string>
+    <string name="access_token" translatable="false">pk.eyJ1IjoiZGF3aWQwMSIsImEiOiJja2NhaXowZjYxdnFlMnl0aTE5aHVya3FrIn0.qcgzAKHAORM2hwCDAAlT7w</string>
 
 </resources>

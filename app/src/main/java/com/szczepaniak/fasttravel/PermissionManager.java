@@ -2,6 +2,7 @@ package com.szczepaniak.fasttravel;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -21,7 +22,9 @@ class PermissionManager{
         if(ContextCompat.checkSelfPermission(mainActivity, FINE_LOCATION) == PackageManager.PERMISSION_GRANTED){
             if(ContextCompat.checkSelfPermission(mainActivity, COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED){
                 mLocationPermissionsGranted = true;
-                mainActivity.init();
+                mainActivity.startActivity(new Intent(mainActivity, MapActivity.class));
+                mainActivity.finish();
+
 
             }else {
                 ActivityCompat.requestPermissions((Activity) mainActivity, permissions, LOCATION_PERMISSION_REQUEST_CODE);
@@ -30,6 +33,7 @@ class PermissionManager{
             ActivityCompat.requestPermissions((Activity) mainActivity, permissions, LOCATION_PERMISSION_REQUEST_CODE);
         }
     }
+
 
     public static String getFineLocation() {
         return FINE_LOCATION;
