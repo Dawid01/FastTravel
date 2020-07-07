@@ -37,7 +37,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.Objects;
-
+import java.util.concurrent.TimeUnit;
 
 
 public class MapActivity extends AppCompatActivity implements  OnMapReadyCallback{
@@ -58,6 +58,7 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
     private String directionProfile = DirectionsCriteria.PROFILE_CYCLING;
     private DirectionManager directionManager;
     private View walkBtm, bikeBtm, carBtm;
+    private TextView distanceText;
 
 
 
@@ -72,6 +73,7 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
         searchText = findViewById(R.id.input_search);
         clearIcon = findViewById(R.id.ic_clear);
         gps = findViewById(R.id.ic_gps);
+        distanceText = findViewById(R.id.distance_text);
         searchText.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
@@ -135,10 +137,13 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
             public void onClick(View v) {
 
                 searchText.setText("");
-                if(mainMarker != null){
-                    mainMarker.remove();
-                    mainMarker = null;
-                }
+                mapboxMap.clear();
+                mainMarker = null;
+                touchMarker = null;
+                distanceText.setText("");
+                distanceText.setVisibility(View.GONE);
+                directionManager.ClearDirections();
+
             }
         });
 
@@ -162,6 +167,7 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                 bikeBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_type_bg));
                 carBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_type_bg));
                 directionProfile = DirectionsCriteria.PROFILE_WALKING;
+                DrawDirection();
             }
         });
 
@@ -172,6 +178,7 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                 bikeBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_selected));
                 carBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_type_bg));
                 directionProfile = DirectionsCriteria.PROFILE_CYCLING;
+                DrawDirection();
             }
         });
 
@@ -182,9 +189,22 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                 bikeBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_type_bg));
                 carBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_selected));
                 directionProfile = DirectionsCriteria.PROFILE_DRIVING;
+                DrawDirection();
             }
         });
 
+    }
+
+
+    private void DrawDirection(){
+
+        if(mainMarker != null && touchMarker != null){
+
+            Point origin = Point.fromLngLat(mainMarker.getPosition().getLongitude(), mainMarker.getPosition().getLatitude());
+            Point destination = Point.fromLngLat(touchMarker.getPosition().getLongitude(), touchMarker.getPosition().getLatitude());
+            directionManager.DrawDirection(origin, destination, directionProfile);
+
+        }
     }
 
     @Override
@@ -214,13 +234,7 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                         markerOptions.setTitle("Touch position \n" + point.getLatitude() + " : " + point.getLongitude());
                         markerOptions.setPosition(point);
                         touchMarker = mapboxMap.addMarker(markerOptions);
-
-                        if(mainMarker != null){
-
-                            Point origin = Point.fromLngLat(mainMarker.getPosition().getLongitude(), mainMarker.getPosition().getLatitude());
-                            Point destination = Point.fromLngLat(point.getLongitude(), point.getLatitude());
-                            directionManager.DrawDirection(origin, destination, directionProfile);
-                        }
+                        DrawDirection();
                         return false;
                     }
                 });
@@ -311,7 +325,7 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                         mainMarker.remove();
                     }
                     mainMarker = mapboxMap.addMarker(newMark);
-
+                    DrawDirection();
 
                 }
             }

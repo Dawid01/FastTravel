@@ -1,7 +1,10 @@
 package com.szczepaniak.fasttravel;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.graphics.Color;
+import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -31,6 +34,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -46,6 +50,7 @@ import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineCap;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineColor;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineJoin;
 import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineWidth;
+import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.visibility;
 
 public class DirectionManager {
 
@@ -64,6 +69,8 @@ public class DirectionManager {
 
     private boolean hasInited;
 
+    private String profile = DirectionsCriteria.PROFILE_CYCLING;
+
 
 
     public DirectionManager(MapView mapView, MapboxMap mapboxMap, Activity activity) {
@@ -75,6 +82,7 @@ public class DirectionManager {
     public void DrawDirection(Point origin, Point destination, String directionProfile){
         this.origin = origin;
         this.destination = destination;
+        this.profile = directionProfile;
 
         if(!hasInited) {
             initSource(Objects.requireNonNull(mapboxMap.getStyle()));
@@ -123,6 +131,7 @@ public class DirectionManager {
                 .build();
 
         client.enqueueCall(new Callback<DirectionsResponse>() {
+            @SuppressLint("SetTextI18n")
             @Override
             public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
 
@@ -136,23 +145,23 @@ public class DirectionManager {
                 }
 
                 currentRoute = response.body().routes().get(0);
+                TextView info = activity.findViewById(R.id.distance_text);
+                info.setVisibility(View.VISIBLE);
+                info.setText(currentRoute.distance().longValue() +"m in " +TimeUnit.SECONDS
+                        .toMinutes(Objects.requireNonNull(currentRoute.duration()).longValue()) + "min");
+                Objects.requireNonNull(Objects.requireNonNull(mapboxMap.getStyle()).getLayer(ROUTE_LAYER_ID)).setProperties(visibility(Property.VISIBLE));
 
-                Toast.makeText(activity, String.format(
-                        "Created Direction",
-                        currentRoute.distance()), Toast.LENGTH_SHORT).show();
 
-                if (mapboxMap != null) {
-                    mapboxMap.getStyle(new Style.OnStyleLoaded() {
-                        @Override
-                        public void onStyleLoaded(@NonNull Style style) {
+                mapboxMap.getStyle(new Style.OnStyleLoaded() {
+                    @Override
+                    public void onStyleLoaded(@NonNull Style style) {
 
-                            GeoJsonSource source = style.getSourceAs(ROUTE_SOURCE_ID);
-                            if (source != null) {
-                                source.setGeoJson(LineString.fromPolyline(Objects.requireNonNull(currentRoute.geometry()), PRECISION_6));
-                            }
+                        GeoJsonSource source = style.getSourceAs(ROUTE_SOURCE_ID);
+                        if (source != null) {
+                            source.setGeoJson(LineString.fromPolyline(Objects.requireNonNull(currentRoute.geometry()), PRECISION_6));
                         }
-                    });
-                }
+                    }
+                });
             }
 
             @Override
@@ -163,4 +172,13 @@ public class DirectionManager {
             }
         });
     }
+
+    public void ClearDirections(){
+        Objects.requireNonNull(Objects.requireNonNull(mapboxMap.getStyle()).getLayer(ROUTE_LAYER_ID)).setProperties(visibility(Property.NONE));
+    }
+
+    public  DirectionsRoute getDirectionsRoute(){
+        return currentRoute;
+    }
+
 }

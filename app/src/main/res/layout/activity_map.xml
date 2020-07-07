@@ -16,7 +16,9 @@
         mapbox:mapbox_cameraTargetLat="41.87827"
         mapbox:mapbox_cameraTargetLng="-87.62877"
         mapbox:mapbox_cameraTilt="60"
-        mapbox:mapbox_cameraZoom="16" />
+        mapbox:mapbox_cameraZoom="16" >
+
+    </com.mapbox.mapboxsdk.maps.MapView>
 
     <Button
         android:id="@+id/start_button"
@@ -34,6 +36,24 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="1.0" />
 
+    <TextView
+        android:id="@+id/distance_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:background="@drawable/small_icon_type_bg"
+        android:elevation="2dp"
+        android:gravity="center_vertical"
+        android:padding="5dp"
+        android:textColor="@color/design_default_color_on_secondary"
+        android:textSize="15sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/start_button"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout2"
+        app:layout_constraintVertical_bias="0.0" />
+
     <ImageView
         android:id="@+id/ic.gps"
         android:layout_width="40dp"
@@ -41,6 +61,7 @@
         android:layout_marginEnd="50dp"
         android:layout_marginBottom="40dp"
         android:src="@drawable/ic_gps"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@+id/mapView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
