@@ -2,18 +2,16 @@ package com.szczepaniak.fasttravel;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.View;
-import android.widget.AutoCompleteTextView;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import com.mapbox.api.directions.v5.DirectionsCriteria;
 import com.mapbox.api.geocoding.v5.models.CarmenFeature;
 import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.FeatureCollection;
@@ -30,11 +28,10 @@ import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.maps.Style;
 import com.mapbox.mapboxsdk.maps.UiSettings;
 import com.mapbox.mapboxsdk.plugins.building.BuildingPlugin;
-import com.mapbox.mapboxsdk.plugins.markerview.MarkerView;
-import com.mapbox.mapboxsdk.plugins.markerview.MarkerViewManager;
 import com.mapbox.mapboxsdk.plugins.places.autocomplete.PlaceAutocomplete;
 import com.mapbox.mapboxsdk.plugins.places.autocomplete.model.PlaceOptions;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
+
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -42,23 +39,27 @@ import androidx.appcompat.app.AppCompatActivity;
 import java.util.Objects;
 
 
+
 public class MapActivity extends AppCompatActivity implements  OnMapReadyCallback{
 
     private static final int REQUEST_CODE_AUTOCOMPLETE = 1;
     private MapView mapView;
-    private MapboxMap mapboxMap;
+    public MapboxMap mapboxMap;
     private BuildingPlugin buildingPlugin;
     private Bundle savedInstanceState;
-    private PermissionManager permissionManager;
-    private MarkerViewManager markerViewManager;
     private Marker mainMarker;
+    private Marker touchMarker;
 
     private TextView searchText;
     private ImageView clearIcon;
     private ImageView gps;
     private String geojsonSourceLayerId = "geojsonSourceLayerId";
 
-    private View container;
+    private String directionProfile = DirectionsCriteria.PROFILE_CYCLING;
+    private DirectionManager directionManager;
+    private View walkBtm, bikeBtm, carBtm;
+
+
 
 
     @Override
@@ -71,13 +72,11 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
         searchText = findViewById(R.id.input_search);
         clearIcon = findViewById(R.id.ic_clear);
         gps = findViewById(R.id.ic_gps);
-        container = findViewById(R.id.container);
         searchText.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
                 if ((event.getAction() == KeyEvent.ACTION_DOWN) ||
                         (keyCode == KeyEvent.KEYCODE_ENTER)) {
-                    //geoLocate();
                 }
                 return false;
             }
@@ -103,7 +102,6 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
             @Override
             public void onClick(View v) {
 
-                //getDeviceLocation();
             }
         });
 
@@ -153,6 +151,39 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
             }
         });
 
+        walkBtm = findViewById(R.id.walk);
+        bikeBtm = findViewById(R.id.bike);
+        carBtm = findViewById(R.id.car);
+
+        walkBtm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                walkBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_selected));
+                bikeBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_type_bg));
+                carBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_type_bg));
+                directionProfile = DirectionsCriteria.PROFILE_WALKING;
+            }
+        });
+
+        bikeBtm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                walkBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_type_bg));
+                bikeBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_selected));
+                carBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_type_bg));
+                directionProfile = DirectionsCriteria.PROFILE_CYCLING;
+            }
+        });
+
+        carBtm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                walkBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_type_bg));
+                bikeBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_type_bg));
+                carBtm.setBackground(getResources().getDrawable(R.drawable.small_icon_selected));
+                directionProfile = DirectionsCriteria.PROFILE_DRIVING;
+            }
+        });
 
     }
 
@@ -165,10 +196,34 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                 buildingPlugin = new BuildingPlugin(mapView, mapboxMap, style);
                 buildingPlugin.setMinZoomLevel(15f);
                 buildingPlugin.setVisibility(true);
-                markerViewManager = new MarkerViewManager(mapView, mapboxMap);
 
                 UiSettings uiSettings = mapboxMap.getUiSettings();
                 uiSettings.setCompassMargins(0, 160, 30, 0);
+                directionManager = new DirectionManager(mapView, mapboxMap,MapActivity.this);
+
+                mapboxMap.addOnMapLongClickListener(new MapboxMap.OnMapLongClickListener() {
+                    @Override
+                    public boolean onMapLongClick(@NonNull LatLng point) {
+
+                        if(touchMarker != null){
+                            touchMarker.remove();
+                            touchMarker = null;
+                        }
+
+                        MarkerOptions markerOptions = new MarkerOptions();
+                        markerOptions.setTitle("Touch position \n" + point.getLatitude() + " : " + point.getLongitude());
+                        markerOptions.setPosition(point);
+                        touchMarker = mapboxMap.addMarker(markerOptions);
+
+                        if(mainMarker != null){
+
+                            Point origin = Point.fromLngLat(mainMarker.getPosition().getLongitude(), mainMarker.getPosition().getLatitude());
+                            Point destination = Point.fromLngLat(point.getLongitude(), point.getLatitude());
+                            directionManager.DrawDirection(origin, destination, directionProfile);
+                        }
+                        return false;
+                    }
+                });
             }
         });
     }
@@ -263,25 +318,4 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
         }
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        permissionManager.setmLocationPermissionsGranted(false);
-
-        int request_code = PermissionManager.getLocationPermissionRequestCode();
-
-        if(requestCode == request_code){
-            if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
-
-                for (int i = 0; i < grantResults.length; i++){
-                    if(grantResults[i] != PackageManager.PERMISSION_GRANTED){
-                        permissionManager.setmLocationPermissionsGranted(false);
-                        return;
-                    }
-                }
-                permissionManager.setmLocationPermissionsGranted(true);
-                initMap();
-            }
-        }
-
-    }
 }
