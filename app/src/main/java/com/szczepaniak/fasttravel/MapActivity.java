@@ -203,7 +203,6 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
             Point origin = Point.fromLngLat(mainMarker.getPosition().getLongitude(), mainMarker.getPosition().getLatitude());
             Point destination = Point.fromLngLat(touchMarker.getPosition().getLongitude(), touchMarker.getPosition().getLatitude());
             directionManager.DrawDirection(origin, destination, directionProfile);
-
         }
     }
 
@@ -225,15 +224,26 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                     @Override
                     public boolean onMapLongClick(@NonNull LatLng point) {
 
-                        if(touchMarker != null){
-                            touchMarker.remove();
-                            touchMarker = null;
-                        }
+                        if(mainMarker == null){
+                            MarkerOptions markerOptions = new MarkerOptions();
+                            markerOptions.setTitle("Touch position");
+                            markerOptions.setSnippet(point.getLatitude() + " : " + point.getLongitude());
+                            markerOptions.setPosition(point);
+                            mainMarker = mapboxMap.addMarker(markerOptions);
+                            searchText.setText("Touch position");
+                        }else {
 
-                        MarkerOptions markerOptions = new MarkerOptions();
-                        markerOptions.setTitle("Touch position \n" + point.getLatitude() + " : " + point.getLongitude());
-                        markerOptions.setPosition(point);
-                        touchMarker = mapboxMap.addMarker(markerOptions);
+                            if (touchMarker != null) {
+                                touchMarker.remove();
+                                touchMarker = null;
+                            }
+
+                            MarkerOptions markerOptions = new MarkerOptions();
+                            markerOptions.setTitle("Touch position");
+                            markerOptions.setSnippet(point.getLatitude() + " : " + point.getLongitude());
+                            markerOptions.setPosition(point);
+                            touchMarker = mapboxMap.addMarker(markerOptions);
+                        }
                         DrawDirection();
                         return false;
                     }

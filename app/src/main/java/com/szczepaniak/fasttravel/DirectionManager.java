@@ -68,6 +68,9 @@ public class DirectionManager {
     private Activity activity;
 
     private boolean hasInited;
+    private TextView info;
+    private TextView searchText;
+
 
     private String profile = DirectionsCriteria.PROFILE_CYCLING;
 
@@ -77,6 +80,8 @@ public class DirectionManager {
         this.mapView = mapView;
         this.mapboxMap = mapboxMap;
         this.activity = activity;
+        info = activity.findViewById(R.id.distance_text);
+        searchText = activity.findViewById(R.id.input_search);
     }
 
     public void DrawDirection(Point origin, Point destination, String directionProfile){
@@ -145,7 +150,6 @@ public class DirectionManager {
                 }
 
                 currentRoute = response.body().routes().get(0);
-                TextView info = activity.findViewById(R.id.distance_text);
                 info.setVisibility(View.VISIBLE);
                 info.setText(currentRoute.distance().longValue() +"m in " +TimeUnit.SECONDS
                         .toMinutes(Objects.requireNonNull(currentRoute.duration()).longValue()) + "min");
@@ -174,7 +178,9 @@ public class DirectionManager {
     }
 
     public void ClearDirections(){
-        Objects.requireNonNull(Objects.requireNonNull(mapboxMap.getStyle()).getLayer(ROUTE_LAYER_ID)).setProperties(visibility(Property.NONE));
+        if(mapboxMap.getStyle().getLayer(ROUTE_LAYER_ID) != null) {
+            Objects.requireNonNull(Objects.requireNonNull(mapboxMap.getStyle()).getLayer(ROUTE_LAYER_ID)).setProperties(visibility(Property.NONE));
+        }
     }
 
     public  DirectionsRoute getDirectionsRoute(){
