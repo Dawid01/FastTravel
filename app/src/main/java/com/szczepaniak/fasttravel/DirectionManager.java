@@ -18,6 +18,8 @@ import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.LineString;
 import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.Mapbox;
+import com.mapbox.mapboxsdk.annotations.PolygonOptions;
+import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
@@ -33,6 +35,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -84,7 +88,7 @@ public class DirectionManager {
         searchText = activity.findViewById(R.id.input_search);
     }
 
-    public void DrawDirection(Point origin, Point destination, String directionProfile){
+    public void drawDirection(Point origin, Point destination, String directionProfile){
         this.origin = origin;
         this.destination = destination;
         this.profile = directionProfile;
@@ -177,7 +181,7 @@ public class DirectionManager {
         });
     }
 
-    public void ClearDirections(){
+    public void clearDirections(){
         if(mapboxMap.getStyle().getLayer(ROUTE_LAYER_ID) != null) {
             Objects.requireNonNull(Objects.requireNonNull(mapboxMap.getStyle()).getLayer(ROUTE_LAYER_ID)).setProperties(visibility(Property.NONE));
         }
@@ -185,6 +189,59 @@ public class DirectionManager {
 
     public  DirectionsRoute getDirectionsRoute(){
         return currentRoute;
+    }
+
+
+    public PolygonOptions generatePerimeter(LatLng centerCoordinates, double radiusInKilometers, int numberOfSides) {
+        List<LatLng> positions = new ArrayList<>();
+        double distanceX = radiusInKilometers / (111.319 * Math.cos(centerCoordinates.getLatitude() * Math.PI / 180));
+        double distanceY = radiusInKilometers / 110.574;
+
+        double slice = (2 * Math.PI) / numberOfSides;
+
+        double theta;
+        double x;
+        double y;
+        LatLng position;
+        for (int i = 0; i < numberOfSides; ++i) {
+            theta = i * slice;
+            x = distanceX * Math.cos(theta);
+            y = distanceY * Math.sin(theta);
+
+            position = new LatLng(centerCoordinates.getLatitude() + y,
+                    centerCoordinates.getLongitude() + x);
+            positions.add(position);
+        }
+        return new PolygonOptions()
+                .addAll(positions)
+                .fillColor(Color.BLUE)
+                .alpha(0.1f);
+    }
+
+
+    public List<LatLng> getLatLangByDistance(LatLng centerCoordinates, double radiusInKilometers, int numberOfSides) {
+
+        List<LatLng> positions = new ArrayList<>();
+        double distanceX = radiusInKilometers / (111.319 * Math.cos(centerCoordinates.getLatitude() * Math.PI / 180));
+        double distanceY = radiusInKilometers / 110.574;
+
+        double slice = (2 * Math.PI) / numberOfSides;
+
+        double theta;
+        double x;
+        double y;
+        LatLng position;
+        for (int i = 0; i < numberOfSides; ++i) {
+            theta = i * slice;
+            x = distanceX * Math.cos(theta);
+            y = distanceY * Math.sin(theta);
+
+            position = new LatLng(centerCoordinates.getLatitude() + y,
+                    centerCoordinates.getLongitude() + x);
+            positions.add(position);
+        }
+
+        return positions;
     }
 
 }
