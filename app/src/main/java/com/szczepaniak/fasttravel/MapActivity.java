@@ -12,10 +12,15 @@ import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.PopupWindow;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import com.mapbox.api.directions.v5.DirectionsCriteria;
@@ -89,16 +94,10 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
     private TextView distanceText;
 
     private Button startButton;
-
-    private Retrofit.Builder builder;
-    private Retrofit retrofit;
-    private Services service;
-
-    private MapboxDirections client;
-
-
+    private TravelGenerator travelGenerator;
     private  String[] filterTypes = {"park", "museum", "rest area", "mountain", "lake" , "zoo", "restaurant", "pizza", "pools", "theatre"};
-
+   // private  String[] filterTypes = {""};
+    float distance = 0f;
 
 
     @Override
@@ -112,10 +111,6 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
         clearIcon = findViewById(R.id.ic_clear);
         gps = findViewById(R.id.ic_gps);
         distanceText = findViewById(R.id.distance_text);
-
-        builder = new Retrofit.Builder().baseUrl("https://api.mapbox.com").addConverterFactory(GsonConverterFactory.create());
-        retrofit = builder.build();
-        service = retrofit.create(Services.class);
 
         searchText.setOnKeyListener(new View.OnKeyListener() {
             @Override
@@ -162,9 +157,14 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                 if(searchText.getText().toString().length() > 0){
 
                     clearIcon.setVisibility(View.VISIBLE);
+                    startButton.setVisibility(View.VISIBLE);
                 }else {
 
+                    walkBtm.setVisibility(View.VISIBLE);
+                    bikeBtm.setVisibility(View.VISIBLE);
+                    carBtm.setVisibility(View.VISIBLE);
                     clearIcon.setVisibility(View.GONE);
+                    startButton.setVisibility(View.GONE);
                 }
             }
 
@@ -266,6 +266,19 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                 UiSettings uiSettings = mapboxMap.getUiSettings();
                 uiSettings.setCompassMargins(0, 160, 30, 0);
                 directionManager = new DirectionManager(mapView, mapboxMap,MapActivity.this);
+                travelGenerator = new TravelGenerator(mapboxMap, MapActivity.this, directionProfile);
+                mapboxMap.setOnMarkerClickListener(new MapboxMap.OnMarkerClickListener() {
+                    @Override
+                    public boolean onMarkerClick(@NonNull Marker marker) {
+                        Point origin = Point.fromLngLat(mainMarker.getPosition().getLongitude(), mainMarker.getPosition().getLatitude());
+                        Point destination = Point.fromLngLat(marker.getPosition().getLongitude(), marker.getPosition().getLatitude());
+                        directionManager.drawDirection(origin, destination, directionProfile);
+                        if(touchMarker != null) {
+                            touchMarker.remove();
+                        }
+                        return false;
+                    }
+                });
 
                 mapboxMap.addOnMapLongClickListener(new MapboxMap.OnMapLongClickListener() {
                     @Override
@@ -302,119 +315,86 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
 
                         if(mainMarker != null){
 
-                            LatLng latLng = new LatLng();
-                            latLng.setLatitude(mainMarker.getPosition().getLatitude());
-                            latLng.setLongitude(mainMarker.getPosition().getLongitude());
-                            PolygonOptions polygonOptions = directionManager.generatePerimeter(latLng, 5, 6);
-                            mapboxMap.addPolygon(polygonOptions);
 
-                            List<LatLng> latLngs = directionManager.getLatLangByDistance(latLng, 5, 6);
-                            List<LatLng> places = new ArrayList<>();
-                            for(LatLng position : latLngs){
+                            LayoutInflater inflater = (LayoutInflater)
+                                    getSystemService(LAYOUT_INFLATER_SERVICE);
+                            assert inflater != null;
+                            View popupView = inflater.inflate(R.layout.travel_settings_popup, null);
+                            int width = LinearLayout.LayoutParams.WRAP_CONTENT;
+                            int height = LinearLayout.LayoutParams.WRAP_CONTENT;
+                            final PopupWindow popupWindow = new PopupWindow(popupView, width, height, true);
+                            popupWindow.showAtLocation(mapView, Gravity.CENTER, 0, 0);
 
-                                for(String type : filterTypes){
 
-                                    findPlacesByType(type, position, places, latLng);
+                            Button okBtm = popupView.findViewById(R.id.start_button);
+                            SeekBar distanceBar = popupView.findViewById(R.id.distance_bar);
+                            TextView distanceText = popupView.findViewById(R.id.distance_text);
+                            distance = distanceBar.getProgress() + 1;
+                            distanceText.setText("distance: " + (int)distance + " km");
+
+                            distanceBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                                @Override
+                                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                                    distance = progress + 1;
+                                    distanceText.setText("distance: " + (int)distance + " km");
+
                                 }
-                            }
 
+                                @Override
+                                public void onStartTrackingTouch(SeekBar seekBar) {
+
+                                }
+
+                                @Override
+                                public void onStopTrackingTouch(SeekBar seekBar) {
+
+                                }
+                            });
+
+                            okBtm.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+
+                                    LatLng latLng = new LatLng();
+                                    latLng.setLatitude(mainMarker.getPosition().getLatitude());
+                                    latLng.setLongitude(mainMarker.getPosition().getLongitude());
+                                    PolygonOptions polygonOptions = directionManager.generatePerimeter(latLng, distance, 64);
+                                    mapboxMap.addPolygon(polygonOptions);
+
+                                    List<LatLng> latLngs = directionManager.getLatLangByDistance(latLng, distance, 8);
+                                    List<LatLng> places = new ArrayList<>();
+                                    for(LatLng position : latLngs){
+
+                                        for(String type : filterTypes){
+
+                                            travelGenerator.setDirectionProfile(directionProfile);
+                                            travelGenerator.findPlacesByType(type, position, places, latLng, distance * 1000f);
+                                        }
+                                    }
+
+                                    switch (directionProfile){
+
+                                        case DirectionsCriteria.PROFILE_WALKING:
+                                            bikeBtm.setVisibility(View.GONE);
+                                            carBtm.setVisibility(View.GONE);
+                                            break;
+                                        case DirectionsCriteria.PROFILE_CYCLING:
+                                            walkBtm.setVisibility(View.GONE);
+                                            carBtm.setVisibility(View.GONE);
+                                            break;
+                                        case DirectionsCriteria.PROFILE_DRIVING:
+                                            walkBtm.setVisibility(View.GONE);
+                                            bikeBtm.setVisibility(View.GONE);
+                                            break;
+                                    }
+                                }
+                            });
                         }
 
                     }
                 });
             }
         });
-    }
-
-
-    private void findPlacesByType(String type, LatLng position, List<LatLng> places, LatLng origin){
-
-        @SuppressLint("Range") MapboxGeocoding mapboxGeocoding = MapboxGeocoding.builder()
-                .accessToken(getString(R.string.access_token))
-                .mode(GeocodingCriteria.MODE_PLACES)
-                .proximity(Point.fromLngLat(position.getLongitude(), position.getLatitude()))
-                .query(type)
-                .geocodingTypes(GeocodingCriteria.TYPE_POI_LANDMARK)
-                .limit(1)
-                .fuzzyMatch(false)
-                .build();
-
-
-        mapboxGeocoding.enqueueCall(new Callback<GeocodingResponse>() {
-            @Override
-            public void onResponse(Call<GeocodingResponse> call, Response<GeocodingResponse> response) {
-
-                if(response.isSuccessful()){
-
-                    for (CarmenFeature carmenFeature : response.body().features()){
-
-                        LatLng position = new LatLng();
-                        position.setLatitude(carmenFeature.center().latitude());
-                        position.setLongitude(carmenFeature.center().longitude());
-
-                        if(!places.contains(position)) {
-
-                            places.add(position);
-
-                            client = MapboxDirections.builder()
-                                    .origin(Point.fromLngLat(origin.getLongitude(), origin.getLatitude()))
-                                    .destination(Point.fromLngLat(position.getLongitude(), position.getLatitude()))
-                                    .overview(DirectionsCriteria.OVERVIEW_FULL)
-                                    .profile(directionProfile)
-                                    .accessToken(getString(R.string.access_token))
-                                    .build();
-
-                            client.enqueueCall(new Callback<DirectionsResponse>() {
-                                @Override
-                                public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
-
-                                    if(response.isSuccessful()){
-
-                                        try {
-                                            double distance = response.body().routes().get(0).distance();
-                                            if(Math.abs(distance - 5000) <= 1000) {
-
-                                                MarkerOptions markerOptions = new MarkerOptions();
-                                                markerOptions.setTitle(carmenFeature.placeName());
-                                                markerOptions.setPosition(position);
-                                                markerOptions.setIcon(drawableToIcon(MapActivity.this, R.drawable.blue_marker));
-                                                mapboxMap.addMarker(markerOptions);
-                                            }
-                                        }catch (NullPointerException e){
-
-                                        }
-                                    }
-                                }
-
-                                @Override
-                                public void onFailure(Call<DirectionsResponse> call, Throwable t) {
-
-                                }
-                            });
-
-
-                        }
-
-                    }
-                }
-            }
-
-            @Override
-            public void onFailure(Call<GeocodingResponse> call, Throwable t) {
-
-            }
-        });
-    }
-
-    public static com.mapbox.mapboxsdk.annotations.Icon drawableToIcon(@NonNull Context context, @DrawableRes int id) {
-        Drawable vectorDrawable = ResourcesCompat.getDrawable(context.getResources(), id, context.getTheme());
-        Bitmap bitmap = Bitmap.createBitmap(vectorDrawable.getIntrinsicWidth(),
-                vectorDrawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        canvas.scale(0.7f, 0.7f);
-        vectorDrawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
-        vectorDrawable.draw(canvas);
-        return IconFactory.getInstance(context).fromBitmap(bitmap);
     }
 
     public void initMap(){

@@ -30,6 +30,7 @@
         android:text="START"
         android:textColor="@color/mapbox_plugins_white"
         android:textSize="22sp"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@+id/mapView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
