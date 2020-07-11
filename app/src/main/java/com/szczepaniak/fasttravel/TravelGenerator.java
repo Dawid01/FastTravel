@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
+import android.widget.Toast;
 
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
@@ -17,6 +18,7 @@ import com.mapbox.api.geocoding.v5.GeocodingCriteria;
 import com.mapbox.api.geocoding.v5.MapboxGeocoding;
 import com.mapbox.api.geocoding.v5.models.CarmenFeature;
 import com.mapbox.api.geocoding.v5.models.GeocodingResponse;
+import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.annotations.IconFactory;
@@ -24,6 +26,7 @@ import com.mapbox.mapboxsdk.annotations.MarkerOptions;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -31,13 +34,14 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class TravelGenerator {
+public abstract class TravelGenerator {
 
     private MapboxMap mapboxMap;
     private Context context;
     private MapboxDirections client;
     private String directionProfile;
     private float dist;
+    private int callCount = 0;
 
 
     public TravelGenerator(MapboxMap mapboxMap, Context context, String directionProfile) {
@@ -66,9 +70,11 @@ public class TravelGenerator {
 
                 if(response.isSuccessful()){
 
+                    callCount++;
                     assert response.body() != null;
                     for (CarmenFeature carmenFeature : response.body().features()){
 
+                        List<CarmenFeature> features = response.body().features();
                         LatLng position = new LatLng();
                         position.setLatitude(Objects.requireNonNull(carmenFeature.center()).latitude());
                         position.setLongitude(carmenFeature.center().longitude());
@@ -91,10 +97,9 @@ public class TravelGenerator {
                                 public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
 
                                     if(response.isSuccessful()){
-
+                                        callCount++;
                                         try {
                                             assert response.body() != null;
-                                            try {
                                                 double distance = response.body().routes().get(0).distance();
                                                 if (Math.abs(distance - dist) <= 500) {
 
@@ -103,19 +108,32 @@ public class TravelGenerator {
                                                     markerOptions.setPosition(position);
                                                     markerOptions.setIcon(drawableToIcon(context, R.drawable.blue_marker));
                                                     mapboxMap.addMarker(markerOptions);
+
                                                 }
+
+                                            if(features.indexOf(carmenFeature) == features.size()-1){
+
+                                                onTravelGeneratorFinish();
+                                                Toast.makeText(context, "liczba zapytań: " + callCount , Toast.LENGTH_SHORT).show();
+                                            }
+
                                             }catch (IndexOutOfBoundsException e){
 
-                                            }
-                                        }catch (NullPointerException e){
+                                                if(features.indexOf(carmenFeature) == features.size()-1){
 
-                                        }
+                                                    onTravelGeneratorFinish();
+                                                }
+                                            }
                                     }
                                 }
 
                                 @Override
                                 public void onFailure(Call<DirectionsResponse> call, Throwable t) {
 
+                                    if(features.indexOf(carmenFeature) == features.size()-1){
+
+                                        onTravelGeneratorFinish();
+                                    }
                                 }
                             });
 
@@ -147,4 +165,7 @@ public class TravelGenerator {
     public void setDirectionProfile(String directionProfile) {
         this.directionProfile = directionProfile;
     }
+
+    public abstract void onTravelGeneratorFinish();
+
 }

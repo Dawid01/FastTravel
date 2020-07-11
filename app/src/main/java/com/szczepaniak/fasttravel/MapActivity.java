@@ -20,6 +20,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -93,10 +94,11 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
     private View walkBtm, bikeBtm, carBtm;
     private TextView distanceText;
 
+    private ProgressBar loadingBar;
+
     private Button startButton;
     private TravelGenerator travelGenerator;
-    private  String[] filterTypes = {"park", "museum", "rest area", "mountain", "lake" , "zoo", "restaurant", "pizza", "pools", "theatre"};
-   // private  String[] filterTypes = {""};
+    private  String[] filterTypes = {"park", "museum", "lake" , "zoo", "restaurant", "pizza", "theatre"};
     float distance = 0f;
 
 
@@ -111,6 +113,8 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
         clearIcon = findViewById(R.id.ic_clear);
         gps = findViewById(R.id.ic_gps);
         distanceText = findViewById(R.id.distance_text);
+        loadingBar = findViewById(R.id.loading_bar);
+        loadingBar.setVisibility(View.GONE);
 
         searchText.setOnKeyListener(new View.OnKeyListener() {
             @Override
@@ -266,7 +270,12 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                 UiSettings uiSettings = mapboxMap.getUiSettings();
                 uiSettings.setCompassMargins(0, 160, 30, 0);
                 directionManager = new DirectionManager(mapView, mapboxMap,MapActivity.this);
-                travelGenerator = new TravelGenerator(mapboxMap, MapActivity.this, directionProfile);
+                travelGenerator = new TravelGenerator(mapboxMap, MapActivity.this, directionProfile) {
+                    @Override
+                    public void onTravelGeneratorFinish() {
+                        loadingBar.setVisibility(View.GONE);
+                    }
+                };
                 mapboxMap.setOnMarkerClickListener(new MapboxMap.OnMarkerClickListener() {
                     @Override
                     public boolean onMarkerClick(@NonNull Marker marker) {
@@ -322,7 +331,7 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                             View popupView = inflater.inflate(R.layout.travel_settings_popup, null);
                             int width = LinearLayout.LayoutParams.WRAP_CONTENT;
                             int height = LinearLayout.LayoutParams.WRAP_CONTENT;
-                            final PopupWindow popupWindow = new PopupWindow(popupView, width, height, true);
+                            final PopupWindow popupWindow = new PopupWindow(popupView, width, height, false);
                             popupWindow.showAtLocation(mapView, Gravity.CENTER, 0, 0);
 
 
@@ -354,6 +363,9 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                             okBtm.setOnClickListener(new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
+
+                                    loadingBar.setVisibility(View.VISIBLE);
+                                    popupWindow.dismiss();
 
                                     LatLng latLng = new LatLng();
                                     latLng.setLatitude(mainMarker.getPosition().getLatitude());
