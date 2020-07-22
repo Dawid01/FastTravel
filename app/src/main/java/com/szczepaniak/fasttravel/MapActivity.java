@@ -12,6 +12,7 @@ import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -25,6 +26,15 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.ads.AdListener;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.InterstitialAd;
+import com.google.android.gms.ads.MobileAds;
+import com.google.android.gms.ads.initialization.InitializationStatus;
+import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
+import com.google.android.gms.ads.reward.RewardItem;
+import com.google.android.gms.ads.reward.RewardedVideoAd;
+import com.google.android.gms.ads.reward.RewardedVideoAdListener;
 import com.mapbox.api.directions.v5.DirectionsCriteria;
 import com.mapbox.api.directions.v5.MapboxDirections;
 import com.mapbox.api.directions.v5.models.DirectionsResponse;
@@ -55,27 +65,16 @@ import com.mapbox.mapboxsdk.plugins.places.autocomplete.PlaceAutocomplete;
 import com.mapbox.mapboxsdk.plugins.places.autocomplete.model.PlaceOptions;
 import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
 
-
-import androidx.annotation.ColorInt;
-import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
-import androidx.core.content.res.ResourcesCompat;
-import androidx.core.graphics.drawable.DrawableCompat;
+
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
 
-
-public class MapActivity extends AppCompatActivity implements  OnMapReadyCallback{
+public class MapActivity extends AppCompatActivity implements  OnMapReadyCallback, RewardedVideoAdListener{
 
     private static final int REQUEST_CODE_AUTOCOMPLETE = 1;
     private MapView mapView;
@@ -104,11 +103,32 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
 
     private boolean startBtmActive = false;
 
+    private RewardedVideoAd mRewardedVideoAd;
+    private InterstitialAd mInterstitialAd;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         this.savedInstanceState = savedInstanceState;
+
+//        MobileAds.initialize(this,
+//                "ca-app-pub-3940256099942544~3347511713");
+
+        MobileAds.initialize(this, "ca-app-pub-3940256099942544~3347511713");
+        // Use an activity context to get the rewarded video instance.
+        mRewardedVideoAd = MobileAds.getRewardedVideoAdInstance(this);
+        mRewardedVideoAd.setRewardedVideoAdListener(this);
+
+        mInterstitialAd = new InterstitialAd(this);
+        mInterstitialAd.setAdUnitId("ca-app-pub-3940256099942544/1033173712");
+        mInterstitialAd.loadAd(new AdRequest.Builder().build());
+
+
+
+        loadRewardedVideoAd();
+
         initMap();
         setContentView(R.layout.activity_map);
         initMap();
@@ -136,7 +156,7 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                 Intent intent = new PlaceAutocomplete.IntentBuilder()
                         .accessToken(Mapbox.getAccessToken() != null ? Mapbox.getAccessToken() : getString(R.string.access_token))
                         .placeOptions(PlaceOptions.builder()
-                                .backgroundColor(Color.parseColor("#EEEEEE"))
+                                .backgroundColor(Color.TRANSPARENT)
                                 .limit(10)
                                 .build(PlaceOptions.MODE_CARDS))
                         .build(MapActivity.this);
@@ -253,6 +273,11 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
     }
 
 
+    private void loadRewardedVideoAd() {
+        mRewardedVideoAd.loadAd("ca-app-pub-3940256099942544/5224354917",
+                new AdRequest.Builder().build());
+    }
+
     private void DrawDirection(){
 
         if(mainMarker != null && touchMarker != null){
@@ -330,6 +355,9 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
 
                         if(mainMarker != null){
 
+//                            loadRewardedVideoAd();
+//                            mRewardedVideoAd.show();
+
                             LayoutInflater inflater = (LayoutInflater)
                                     getSystemService(LAYOUT_INFLATER_SERVICE);
                             assert inflater != null;
@@ -374,44 +402,20 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                                     startBtmActive = true;
                                     startButton.setVisibility(View.GONE);
 
-                                    LatLng latLng = new LatLng();
-                                    latLng.setLatitude(mainMarker.getPosition().getLatitude());
-                                    latLng.setLongitude(mainMarker.getPosition().getLongitude());
-                                    PolygonOptions polygonOptions = directionManager.generatePerimeter(latLng, distance, 64);
-                                    mapboxMap.addPolygon(polygonOptions);
+//                                    if (mInterstitialAd.isLoaded()) {
+//                                        mInterstitialAd.show();
+//                                    } else {
+//                                        Log.d("TAG", "The interstitial wasn't loaded yet.");
+//                                    }
 
-                                    List<LatLng> latLngs = directionManager.getLatLangByDistance(latLng, distance, 5);
-                                    List<LatLng> places = new ArrayList<>();
-
-                                    for(LatLng position : latLngs){
-                                        for(String type : filterTypes){
-                                            travelGenerator.setDirectionProfile(directionProfile);
-                                            if(type.equals(filterTypes[filterTypes.length - 1])) {
-                                                travelGenerator.findPlacesByType(type, position, places, latLng, distance * 1000f, true, mainMarker);
-                                            }else {
-                                                travelGenerator.findPlacesByType(type, position, places, latLng, distance * 1000f, false, mainMarker);
-                                            }
-
-                                        }
-
+                                    if (mRewardedVideoAd.isLoaded()) {
+                                        mRewardedVideoAd.show();
+                                        loadRewardedVideoAd();
+                                    }else {
+                                        findPlaces();
                                     }
 
 
-                                    switch (directionProfile){
-
-                                        case DirectionsCriteria.PROFILE_WALKING:
-                                            bikeBtm.setVisibility(View.GONE);
-                                            carBtm.setVisibility(View.GONE);
-                                            break;
-                                        case DirectionsCriteria.PROFILE_CYCLING:
-                                            walkBtm.setVisibility(View.GONE);
-                                            carBtm.setVisibility(View.GONE);
-                                            break;
-                                        case DirectionsCriteria.PROFILE_DRIVING:
-                                            walkBtm.setVisibility(View.GONE);
-                                            bikeBtm.setVisibility(View.GONE);
-                                            break;
-                                    }
                                 }
                             });
                         }
@@ -420,6 +424,47 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                 });
             }
         });
+    }
+
+
+
+    private void findPlaces(){
+        LatLng latLng = new LatLng();
+        latLng.setLatitude(mainMarker.getPosition().getLatitude());
+        latLng.setLongitude(mainMarker.getPosition().getLongitude());
+        PolygonOptions polygonOptions = directionManager.generatePerimeter(latLng, distance, 64);
+        mapboxMap.addPolygon(polygonOptions);
+
+        List<LatLng> latLngs = directionManager.getLatLangByDistance(latLng, distance, 5);
+        List<LatLng> places = new ArrayList<>();
+
+        for(LatLng position : latLngs){
+            for(String type : filterTypes){
+                travelGenerator.setDirectionProfile(directionProfile);
+                if(type.equals(filterTypes[filterTypes.length - 1])) {
+                    travelGenerator.findPlacesByType(type, position, places, latLng, distance * 1000f, true, mainMarker);
+                }else {
+                    travelGenerator.findPlacesByType(type, position, places, latLng, distance * 1000f, false, mainMarker);
+                }
+            }
+        }
+
+
+        switch (directionProfile){
+
+            case DirectionsCriteria.PROFILE_WALKING:
+                bikeBtm.setVisibility(View.GONE);
+                carBtm.setVisibility(View.GONE);
+                break;
+            case DirectionsCriteria.PROFILE_CYCLING:
+                walkBtm.setVisibility(View.GONE);
+                carBtm.setVisibility(View.GONE);
+                break;
+            case DirectionsCriteria.PROFILE_DRIVING:
+                walkBtm.setVisibility(View.GONE);
+                bikeBtm.setVisibility(View.GONE);
+                break;
+        }
     }
 
     public void initMap(){
@@ -481,35 +526,80 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
         if (resultCode == Activity.RESULT_OK && requestCode == REQUEST_CODE_AUTOCOMPLETE) {
             CarmenFeature selectedCarmenFeature = PlaceAutocomplete.getPlace(data);
 
-            if (mapboxMap != null) {
-                Style style = mapboxMap.getStyle();
-                if (style != null) {
-                    GeoJsonSource source = style.getSourceAs(geojsonSourceLayerId);
-                    if (source != null) {
-                        source.setGeoJson(FeatureCollection.fromFeatures(
-                                new Feature[] {Feature.fromJson(selectedCarmenFeature.toJson())}));
-                    }
-
-                    LatLng latLng = new LatLng(((Point) Objects.requireNonNull(selectedCarmenFeature.geometry())).latitude(),
-                            ((Point) selectedCarmenFeature.geometry()).longitude());
-                    mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(
-                            new CameraPosition.Builder()
-                                    .target(latLng)
-                                    .zoom(14)
-                                    .build()), 4000);
-                    searchText.setText(selectedCarmenFeature.text());
-                    MarkerOptions newMark  = new MarkerOptions();
-                    newMark.setPosition(latLng);
-                    newMark.setTitle(selectedCarmenFeature.text());
-                    if(mainMarker != null){
-                        mainMarker.remove();
-                    }
-                    mainMarker = mapboxMap.addMarker(newMark);
-                    DrawDirection();
-
-                }
+            if(mInterstitialAd.isLoaded()){
+                mInterstitialAd.show();
             }
+
+            mInterstitialAd.setAdListener(new AdListener() {
+                @Override
+                public void onAdClosed() {
+                    mInterstitialAd.loadAd(new AdRequest.Builder().build());
+                    if (mapboxMap != null) {
+                        Style style = mapboxMap.getStyle();
+                        if (style != null) {
+                            GeoJsonSource source = style.getSourceAs(geojsonSourceLayerId);
+                            if (source != null) {
+                                source.setGeoJson(FeatureCollection.fromFeatures(
+                                        new Feature[] {Feature.fromJson(selectedCarmenFeature.toJson())}));
+                            }
+
+                            LatLng latLng = new LatLng(((Point) Objects.requireNonNull(selectedCarmenFeature.geometry())).latitude(),
+                                    ((Point) selectedCarmenFeature.geometry()).longitude());
+                            mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(
+                                    new CameraPosition.Builder()
+                                            .target(latLng)
+                                            .zoom(14)
+                                            .build()), 4000);
+                            searchText.setText(selectedCarmenFeature.text());
+                            MarkerOptions newMark  = new MarkerOptions();
+                            newMark.setPosition(latLng);
+                            newMark.setTitle(selectedCarmenFeature.text());
+                            if(mainMarker != null){
+                                mainMarker.remove();
+                            }
+                            mainMarker = mapboxMap.addMarker(newMark);
+                            DrawDirection();
+                        }
+                    }
+                }
+
+            });
+
+
         }
     }
 
+    @Override
+    public void onRewarded(RewardItem reward) {
+        findPlaces();
+    }
+
+    @Override
+    public void onRewardedVideoAdLeftApplication() {
+
+    }
+
+    @Override
+    public void onRewardedVideoAdClosed() {
+    }
+
+    @Override
+    public void onRewardedVideoAdFailedToLoad(int errorCode) {
+    }
+
+    @Override
+    public void onRewardedVideoAdLoaded() {
+    }
+
+    @Override
+    public void onRewardedVideoAdOpened() {
+    }
+
+    @Override
+    public void onRewardedVideoStarted() {
+    }
+
+    @Override
+    public void onRewardedVideoCompleted() {
+    }
 }

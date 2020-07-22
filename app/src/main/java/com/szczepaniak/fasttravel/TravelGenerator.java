@@ -153,7 +153,7 @@ public abstract class TravelGenerator {
 
                                                 if (findedPlacesCount <= 5) {
 
-                                                    // findCities(mainMarker.getPosition());
+                                                    findCities(mainMarker.getPosition());
                                                     findedPlacesCount = 0;
                                                 }
 
