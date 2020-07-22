@@ -23,6 +23,7 @@ import android.widget.PopupWindow;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.mapbox.api.directions.v5.DirectionsCriteria;
 import com.mapbox.api.directions.v5.MapboxDirections;
@@ -101,6 +102,8 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
     private  String[] filterTypes = {"park", "museum", "lake" , "zoo", "restaurant", "pizza", "theatre"};
     float distance = 0f;
 
+    private boolean startBtmActive = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -161,7 +164,9 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                 if(searchText.getText().toString().length() > 0){
 
                     clearIcon.setVisibility(View.VISIBLE);
-                    startButton.setVisibility(View.VISIBLE);
+                    if(!startBtmActive) {
+                        startButton.setVisibility(View.VISIBLE);
+                    }
                 }else {
 
                     walkBtm.setVisibility(View.VISIBLE);
@@ -190,6 +195,7 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                 distanceText.setText("");
                 distanceText.setVisibility(View.GONE);
                 directionManager.clearDirections();
+                startBtmActive = false;
 
             }
         });
@@ -324,7 +330,6 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
 
                         if(mainMarker != null){
 
-
                             LayoutInflater inflater = (LayoutInflater)
                                     getSystemService(LAYOUT_INFLATER_SERVICE);
                             assert inflater != null;
@@ -366,6 +371,8 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
 
                                     loadingBar.setVisibility(View.VISIBLE);
                                     popupWindow.dismiss();
+                                    startBtmActive = true;
+                                    startButton.setVisibility(View.GONE);
 
                                     LatLng latLng = new LatLng();
                                     latLng.setLatitude(mainMarker.getPosition().getLatitude());
@@ -373,16 +380,22 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                                     PolygonOptions polygonOptions = directionManager.generatePerimeter(latLng, distance, 64);
                                     mapboxMap.addPolygon(polygonOptions);
 
-                                    List<LatLng> latLngs = directionManager.getLatLangByDistance(latLng, distance, 8);
+                                    List<LatLng> latLngs = directionManager.getLatLangByDistance(latLng, distance, 5);
                                     List<LatLng> places = new ArrayList<>();
+
                                     for(LatLng position : latLngs){
-
                                         for(String type : filterTypes){
-
                                             travelGenerator.setDirectionProfile(directionProfile);
-                                            travelGenerator.findPlacesByType(type, position, places, latLng, distance * 1000f);
+                                            if(type.equals(filterTypes[filterTypes.length - 1])) {
+                                                travelGenerator.findPlacesByType(type, position, places, latLng, distance * 1000f, true, mainMarker);
+                                            }else {
+                                                travelGenerator.findPlacesByType(type, position, places, latLng, distance * 1000f, false, mainMarker);
+                                            }
+
                                         }
+
                                     }
+
 
                                     switch (directionProfile){
 
