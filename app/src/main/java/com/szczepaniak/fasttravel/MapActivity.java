@@ -73,6 +73,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import co.lujun.androidtagview.TagContainerLayout;
+import co.lujun.androidtagview.TagView;
+
 
 public class MapActivity extends AppCompatActivity implements  OnMapReadyCallback, RewardedVideoAdListener{
 
@@ -98,13 +101,15 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
 
     private Button startButton;
     private TravelGenerator travelGenerator;
-    private  String[] filterTypes = {"park", "museum", "lake" , "zoo", "restaurant", "pizza", "theatre"};
+    private PlacesManager placesManager;
     float distance = 0f;
 
     private boolean startBtmActive = false;
 
     private RewardedVideoAd mRewardedVideoAd;
     private InterstitialAd mInterstitialAd;
+
+    private PopupWindow travelSettingPopup;
 
 
 
@@ -113,18 +118,13 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         this.savedInstanceState = savedInstanceState;
 
-//        MobileAds.initialize(this,
-//                "ca-app-pub-3940256099942544~3347511713");
 
         MobileAds.initialize(this, "ca-app-pub-3940256099942544~3347511713");
-        // Use an activity context to get the rewarded video instance.
         mRewardedVideoAd = MobileAds.getRewardedVideoAdInstance(this);
         mRewardedVideoAd.setRewardedVideoAdListener(this);
-
         mInterstitialAd = new InterstitialAd(this);
         mInterstitialAd.setAdUnitId("ca-app-pub-3940256099942544/1033173712");
         mInterstitialAd.loadAd(new AdRequest.Builder().build());
-
 
 
         loadRewardedVideoAd();
@@ -138,6 +138,8 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
         distanceText = findViewById(R.id.distance_text);
         loadingBar = findViewById(R.id.loading_bar);
         loadingBar.setVisibility(View.GONE);
+
+        placesManager = PlacesManager.getInstance(this);
 
         searchText.setOnKeyListener(new View.OnKeyListener() {
             @Override
@@ -364,9 +366,9 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                             View popupView = inflater.inflate(R.layout.travel_settings_popup, null);
                             int width = LinearLayout.LayoutParams.WRAP_CONTENT;
                             int height = LinearLayout.LayoutParams.WRAP_CONTENT;
-                            final PopupWindow popupWindow = new PopupWindow(popupView, width, height, false);
-                            popupWindow.showAtLocation(mapView, Gravity.CENTER, 0, 0);
-
+                            travelSettingPopup = new PopupWindow(popupView, width, height, false);
+                            travelSettingPopup.showAtLocation(mapView, Gravity.CENTER, 0, 0);
+                            startButton.setVisibility(View.GONE);
 
                             Button okBtm = popupView.findViewById(R.id.start_button);
                             SeekBar distanceBar = popupView.findViewById(R.id.distance_bar);
@@ -398,7 +400,7 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                                 public void onClick(View v) {
 
                                     loadingBar.setVisibility(View.VISIBLE);
-                                    popupWindow.dismiss();
+                                    travelSettingPopup.dismiss();
                                     startBtmActive = true;
                                     startButton.setVisibility(View.GONE);
 
@@ -415,6 +417,39 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
                                         findPlaces();
                                     }
 
+
+                                }
+                            });
+
+                            TagContainerLayout tagContainerLayout = (TagContainerLayout) popupView.findViewById(R.id.tags);
+                            tagContainerLayout.setTagMaxLength(20);
+                            tagContainerLayout.setTagBackgroundColor(getColor(R.color.colorAccent));
+                            tagContainerLayout.setTagBorderColor(getColor(R.color.colorAccent));
+                            tagContainerLayout.setTagTextColor(getColor(R.color.colorPrimaryDark));
+                            tagContainerLayout.setBackgroundColor(Color.TRANSPARENT);
+                            tagContainerLayout.setBorderColor(Color.TRANSPARENT);
+                            tagContainerLayout.setEnableCross(false);
+
+                            tagContainerLayout.setTags(PlacesManager.getInstance(MapActivity.this).getPlacesList());
+
+                            tagContainerLayout.setOnTagClickListener(new TagView.OnTagClickListener() {
+                                @Override
+                                public void onTagClick(int position, String text) {
+                                    startActivity(new Intent(MapActivity.this, SelectPlacesTypes.class));
+
+                                }
+
+                                @Override
+                                public void onTagLongClick(int position, String text) {
+                                }
+
+                                @Override
+                                public void onSelectedTagDrag(int position, String text) {
+
+                                }
+
+                                @Override
+                                public void onTagCrossClick(int position) {
 
                                 }
                             });
@@ -437,6 +472,7 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
 
         List<LatLng> latLngs = directionManager.getLatLangByDistance(latLng, distance, 5);
         List<LatLng> places = new ArrayList<>();
+        String[] filterTypes = placesManager.getPlacesList();
 
         for(LatLng position : latLngs){
             for(String type : filterTypes){
@@ -475,6 +511,18 @@ public class MapActivity extends AppCompatActivity implements  OnMapReadyCallbac
         mapView.getMapAsync(this);
     }
 
+
+    @Override
+    public void onBackPressed() {
+
+        if(travelSettingPopup != null){
+            travelSettingPopup.dismiss();
+
+            if(mainMarker != null){
+                startButton.setVisibility(View.VISIBLE);
+            }
+        }
+    }
 
 
 

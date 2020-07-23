@@ -99,7 +99,6 @@ public abstract class TravelGenerator {
                                     .build();
 
                             callCount++;
-                            onTravelGeneratorFinish();
 
                             client.enqueueCall(new Callback<DirectionsResponse>() {
                                 @Override
@@ -120,7 +119,6 @@ public abstract class TravelGenerator {
                                                 }
 
                                                 if (distanceIsOK) {
-
                                                     MarkerOptions markerOptions = new MarkerOptions();
                                                     markerOptions.setTitle(type + ": " + carmenFeature.placeName());
                                                     markerOptions.setPosition(position);
@@ -128,7 +126,6 @@ public abstract class TravelGenerator {
                                                     mapboxMap.addMarker(markerOptions);
                                                     findedPlacesCount ++;
                                                     polygon_points.add(position);
-
                                                 }
 
 
@@ -139,9 +136,7 @@ public abstract class TravelGenerator {
                                         }
 
                                         if(last) {
-
                                             featureIndex ++;
-//                                                    int featureIndex = features.indexOf(carmenFeature);
                                             int size = features.size();
                                             if (featureIndex == size) {
                                                 removedPositions = 0;
@@ -149,16 +144,13 @@ public abstract class TravelGenerator {
                                                 Toast.makeText(context, "liczba zapytań: " + callCount, Toast.LENGTH_SHORT).show();
                                                 callCount = 0;
                                                 onTravelGeneratorFinish();
-
-
                                                 if (findedPlacesCount <= 5) {
 
-                                                    findCities(mainMarker.getPosition());
+                                                    //findCities(mainMarker.getPosition());
                                                     findedPlacesCount = 0;
                                                 }
 
                                                 polygon_points.clear();
-
 
                                             }
                                         }
